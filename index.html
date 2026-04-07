@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Do We Need Distinct Representations for Every Speech Token?</title>
+    <meta
+      name="description"
+      content="ACL 2026 Findings paper page for Unveiling and Exploiting Redundancy in Large Speech Language Models."
+    >
+    <meta property="og:title" content="Do We Need Distinct Representations for Every Speech Token?">
+    <meta
+      property="og:description"
+      content="Affinity Pooling is a training-free, similarity-based token merging method for efficient Large Speech Language Models."
+    >
+    <style>
+      :root {
+        --blue: #528fad;
+        --blue-dark: #1f5f78;
+        --blue-soft: #e8f4f8;
+        --red: #e76254;
+        --red-soft: #fff0ee;
+        --green: #006b3d;
+        --ink: #15242c;
+        --muted: #53646d;
+        --line: #d7e5ea;
+        --page: #f3f9fb;
+        --white: #ffffff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 16px;
+        line-height: 1.65;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .site-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        padding: 18px 32px;
+        background: var(--white);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .brand {
+        font-weight: 800;
+        color: var(--blue-dark);
+      }
+
+      .nav-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .nav-links a {
+        text-decoration: none;
+      }
+
+      .nav-links a:hover {
+        color: var(--blue-dark);
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+        min-height: 520px;
+        padding: 58px 28px 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--white);
+        background: #153443;
+      }
+
+      .hero::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(135deg, rgba(82, 143, 173, 0.34), rgba(231, 98, 84, 0.16)),
+          linear-gradient(180deg, rgba(10, 37, 49, 0.92), rgba(10, 37, 49, 0.82));
+      }
+
+      .hero-content {
+        position: relative;
+        z-index: 1;
+        width: min(1050px, 100%);
+        text-align: center;
+      }
+
+      .kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 16px;
+        padding: 6px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.42);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.11);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      h1,
+      h2,
+      h3 {
+        line-height: 1.16;
+      }
+
+      h1 {
+        max-width: 960px;
+        margin: 0 auto 18px;
+        font-size: 48px;
+        font-weight: 850;
+      }
+
+      .subtitle {
+        max-width: 840px;
+        margin: 0 auto 18px;
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 20px;
+      }
+
+      .authors {
+        margin: 0 auto;
+        max-width: 860px;
+        color: rgba(255, 255, 255, 0.84);
+        font-size: 15px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 28px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 10px 16px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        background: var(--white);
+        color: var(--ink);
+        font-weight: 750;
+        text-decoration: none;
+      }
+
+      .button.secondary {
+        background: rgba(255, 255, 255, 0.12);
+        color: var(--white);
+      }
+
+      .button.disabled {
+        cursor: not-allowed;
+        opacity: 0.72;
+      }
+
+      main {
+        width: min(1120px, calc(100% - 40px));
+        margin: 0 auto;
+      }
+
+      section {
+        margin: 42px 0;
+      }
+
+      .panel {
+        padding: 30px;
+        background: var(--white);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: 0 12px 32px rgba(25, 60, 75, 0.08);
+      }
+
+      .section-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 22px;
+      }
+
+      h2 {
+        margin: 0;
+        color: var(--blue-dark);
+        font-size: 30px;
+      }
+
+      h3 {
+        margin: 0 0 10px;
+        font-size: 20px;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      p + p {
+        margin-top: 14px;
+      }
+
+      .eyebrow {
+        margin: 0 0 8px;
+        color: var(--red);
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 22px;
+      }
+
+      .metric {
+        min-height: 126px;
+        padding: 22px;
+        background: var(--white);
+        border: 1px solid var(--line);
+        border-top: 4px solid var(--blue);
+        border-radius: 8px;
+      }
+
+      .metric strong {
+        display: block;
+        color: var(--blue-dark);
+        font-size: 31px;
+        line-height: 1;
+      }
+
+      .metric span {
+        display: block;
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .twocol {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        align-items: start;
+      }
+
+      .finding-list {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .finding {
+        padding: 22px;
+        background: var(--white);
+        border: 1px solid var(--line);
+        border-top: 4px solid var(--blue);
+        border-radius: 8px;
+      }
+
+      .finding:nth-child(2) {
+        border-top-color: var(--red);
+      }
+
+      .finding:nth-child(3) {
+        border-top-color: var(--green);
+      }
+
+      figure {
+        margin: 0;
+      }
+
+      .figure-card {
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        background: var(--white);
+        border: 1px solid #e6eef2;
+        border-radius: 8px;
+      }
+
+      .figure-card + .figure-card {
+        margin-top: 18px;
+      }
+
+      .figure-card img {
+        display: block;
+        width: 100%;
+        height: auto;
+        padding: 16px;
+        background: var(--white);
+      }
+
+      figcaption {
+        order: -1;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--line);
+        background: #f8fcfd;
+        color: var(--ink);
+        font-size: 14px;
+        font-weight: 750;
+        line-height: 1.45;
+      }
+
+      .method-steps {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+
+      .step {
+        padding: 18px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #f8fcfd;
+      }
+
+      .step-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        margin-bottom: 12px;
+        border-radius: 8px;
+        background: var(--blue);
+        color: var(--white);
+        font-weight: 800;
+      }
+
+      .method-intro {
+        max-width: 900px;
+      }
+
+      .method-figure-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+
+      .method-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+        gap: 22px;
+        align-items: start;
+        margin-top: 24px;
+        margin-bottom: 24px;
+      }
+
+      .white-zone {
+        margin: 48px calc(50% - 50vw) 0;
+        padding: 1px max(20px, calc((100vw - 1120px) / 2)) 48px;
+        background: var(--white);
+        border-top: 1px solid var(--line);
+      }
+
+      .white-zone section {
+        margin: 46px 0;
+      }
+
+      .white-zone .panel {
+        box-shadow: none;
+      }
+
+      .figure-stack {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 28px;
+      }
+
+      pre {
+        overflow-x: auto;
+        margin: 0;
+        padding: 18px;
+        border-radius: 8px;
+        background: var(--white);
+        color: var(--ink);
+        border: 1px solid var(--line);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .citation-panel {
+        background: var(--white);
+      }
+
+      .note {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      footer {
+        width: min(1120px, calc(100% - 40px));
+        margin: 50px auto 32px;
+        padding-top: 22px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      @media (max-width: 920px) {
+        h1 {
+          font-size: 38px;
+        }
+
+        .subtitle {
+          font-size: 18px;
+        }
+
+        .metrics,
+        .finding-list,
+        .method-steps,
+        .method-figure-grid,
+        .method-layout,
+        .twocol {
+          grid-template-columns: 1fr;
+        }
+
+        .section-head {
+          display: block;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .site-nav {
+          display: block;
+          padding: 16px 20px;
+        }
+
+        .nav-links {
+          margin-top: 10px;
+        }
+
+        .hero {
+          min-height: auto;
+          padding: 42px 20px 36px;
+        }
+
+        h1 {
+          font-size: 31px;
+        }
+
+        h2 {
+          font-size: 25px;
+        }
+
+        main,
+        footer {
+          width: min(100% - 28px, 1120px);
+        }
+
+        .panel {
+          padding: 22px;
+        }
+
+        .button {
+          width: 100%;
+        }
+
+        .figure-card img {
+          padding: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a class="brand" href="#">Affinity Pooling for LSLMs</a>
+      <div class="nav-links">
+        <a href="#abstract">Abstract</a>
+        <a href="#introduction">Introduction</a>
+        <a href="#related-work">Related Work</a>
+        <a href="#oracle">Oracle</a>
+        <a href="#similarity">Affinity Pooling</a>
+        <a href="#results">Results</a>
+        <a href="#bibtex">BibTeX</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="hero-content">
+        <p class="kicker">Findings of ACL 2026</p>
+        <h1>Do We Need Distinct Representations for Every Speech Token?</h1>
+        <p class="subtitle">
+          Unveiling and Exploiting Redundancy in Large Speech Language Models
+        </p>
+        <p class="authors">
+          Bajian Xiang, Tingwei Guo, Xuan Chen, Yang Han<br>
+          Beike Inc., Beijing, China
+        </p>
+        <div class="actions" aria-label="Paper links">
+          <span class="button disabled" aria-disabled="true">💻 Code Coming Soon</span>
+          <span class="button disabled" aria-disabled="true">📚 arXiv Coming Soon</span>
+          <a class="button secondary" href="https://github.com/XChen-Zero/speech-token-redundancy">🌐 Page GitHub</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="abstract" class="panel">
+        <p class="eyebrow">Abstract</p>
+        <h2>Speech Tokens Are Not Equally Necessary</h2>
+        <p>
+          Large Speech Language Models (LSLMs) typically operate at high token rates to ensure
+          acoustic fidelity, yet this produces sequence lengths far beyond the underlying semantic
+          content. We revisit whether every speech token needs a distinct representation. Through
+          layer-wise oracle interventions, we find a structured redundancy hierarchy: shallow layers
+          encode essential acoustic details, while deep layers exhibit extreme redundancy and allow
+          aggressive compression.
+        </p>
+        <p>
+          Motivated by this finding, we introduce <em>Affinity Pooling</em>, a training-free,
+          similarity-based token merging mechanism. Applying it at both input and deep layers
+          compresses speech representations without compromising semantic information. Across ASR,
+          speech QA, and speech translation, the method reduces prefilling FLOPs while maintaining
+          competitive task performance and delivering practical memory and latency gains.
+        </p>
+      </section>
+
+      <section id="introduction" class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">1 Introduction</p>
+            <h2>Why Speech Token Redundancy Matters</h2>
+          </div>
+        </div>
+        <p>
+          LSLMs process audio at high token rates to preserve acoustic fidelity, but speech semantics
+          are much sparser than the resulting token stream. This mismatch forces the language
+          backbone to process many redundant tokens and increases inference cost.
+        </p>
+        <p>
+          The paper first analyzes how redundancy evolves across layers, then uses that analysis to
+          design a training-free compression method grounded in the structure of speech
+          representations.
+        </p>
+      </section>
+
+      <section id="related-work" class="panel">
+        <p class="eyebrow">2 Related Work</p>
+        <h2>Token Compression for Speech Models</h2>
+        <p>
+          Token compression has been widely explored for vision-language models, but compression for
+          LSLMs is still comparatively underexplored. Existing speech-centric approaches often reuse
+          vision-style patch pruning ideas or operate under specialized architectures.
+        </p>
+        <p>
+          This work instead starts from the layer-wise behavior of LSLMs themselves: it asks where
+          redundancy appears, how it is structured, and how that structure can guide inference-time
+          compression.
+        </p>
+      </section>
+
+      <div class="white-zone">
+      <section id="oracle">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">3 Oracle Interventions</p>
+            <h2>Anatomy of Redundancy</h2>
+          </div>
+        </div>
+        <div class="finding-list">
+          <article class="finding">
+            <h3>Redundancy grows with depth</h3>
+            <p>
+              Deep layers remain robust under strong token reduction, while shallow layers require
+              higher retention to preserve acoustic detail.
+            </p>
+          </article>
+          <article class="finding">
+            <h3>Middle layers are fragile</h3>
+            <p>
+              Intervention sensitivity peaks in transitional layers where representations reorganize
+              from acoustic features toward lexical semantics.
+            </p>
+          </article>
+          <article class="finding">
+            <h3>Similarity beats fixed rates</h3>
+            <p>
+              Intrinsic feature similarity captures useful local structure better than rigid,
+              signal-agnostic downsampling.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="figure-stack" aria-label="Oracle intervention figures">
+        <figure class="figure-card">
+          <img
+            src="assets/figures/intervention-framework.png"
+            alt="Framework of oracle intervention experiments."
+          >
+          <figcaption>
+            Oracle intervention framework: align audio tokens to semantic units and compress a
+            single layer at a time.
+          </figcaption>
+        </figure>
+        <figure class="figure-card">
+          <img
+            src="assets/figures/oracle-redundancy.png"
+            alt="Layer-wise oracle intervention results on Qwen2-Audio and Kimi-Audio."
+          >
+          <figcaption>
+            Layer-wise oracle interventions reveal a depth-dependent redundancy hierarchy in both
+            Qwen2-Audio and Kimi-Audio.
+          </figcaption>
+        </figure>
+        <figure class="figure-card">
+          <img
+            src="assets/figures/cosine-dynamics.png"
+            alt="Layer-wise cosine similarity dynamics for Qwen2-Audio and Kimi-Audio."
+          >
+          <figcaption>
+            Cosine similarity dynamics explain why deep layers can tolerate aggressive merging.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section id="similarity" class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">4 Similarity-Driven Interventions</p>
+            <h2>Affinity Pooling</h2>
+          </div>
+        </div>
+        <div class="method-intro">
+          <p>
+            Affinity Pooling aggregates audio tokens using cosine similarity. A token joins the
+            active group if it matches any of the preceding lookback-window tokens above threshold
+            tau; otherwise, the current group is mean-pooled and a new group begins.
+          </p>
+          <p>
+            The layer-wise Affinity Pooling probe confirms the same redundancy structure: input and
+            deep layers remain robust, while intermediate layers are sensitive and best left
+            uncompressed.
+          </p>
+        </div>
+        <div class="method-layout">
+          <figure class="figure-card">
+            <img
+              src="assets/figures/affinity-layer-dynamics.png"
+              alt="Layer-wise dynamics of Affinity Pooling on Qwen2-Audio and Kimi-Audio."
+            >
+            <figcaption>
+              Layer-wise Affinity Pooling dynamics across thresholds.
+            </figcaption>
+          </figure>
+          <div class="method-steps" aria-label="Affinity Pooling workflow">
+            <article class="step">
+              <span class="step-num">1</span>
+              <h3>Scan locally</h3>
+              <p>Compare each token with nearby history inside a small lookback window.</p>
+            </article>
+            <article class="step">
+              <span class="step-num">2</span>
+              <h3>Merge by affinity</h3>
+              <p>Keep similar neighboring tokens in one group and mean-pool the group representation.</p>
+            </article>
+            <article class="step">
+              <span class="step-num">3</span>
+              <h3>Place by layer</h3>
+              <p>Compress at robust input and deep layers, while avoiding fragile middle layers.</p>
+            </article>
+          </div>
+        </div>
+        <div class="method-figure-grid">
+          <figure class="figure-card">
+            <img
+              src="assets/figures/token-groups-main.png"
+              alt="Visualization of Affinity Pooling token groups across layers."
+            >
+            <figcaption>
+              Merged token groups expand from fragmented acoustic-level chunks to broad semantic
+              abstractions in deeper layers.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="results" class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">5 Efficient LSLMs</p>
+            <h2>Efficiency Without Sacrificing Semantics</h2>
+          </div>
+        </div>
+        <div class="metrics" aria-label="Key numbers">
+          <div class="metric">
+            <strong>27.48%</strong>
+            <span>Prefilling FLOPs reduction with aggressive Dual Affinity Pooling.</span>
+          </div>
+          <div class="metric">
+            <strong>14.91%</strong>
+            <span>Final audio token retention ratio under the aggressive DAP setting.</span>
+          </div>
+          <div class="metric">
+            <strong>1.71x</strong>
+            <span>Dynamic memory saving on 40-60 s utterances in H200 deployment.</span>
+          </div>
+          <div class="metric">
+            <strong>0</strong>
+            <span>Extra training required by the proposed similarity-based compression.</span>
+          </div>
+        </div>
+        <p>
+          Across ASR, speech QA, and speech translation, Dual Affinity Pooling remains comparable
+          to the vanilla Qwen2-Audio baseline while carrying far fewer audio tokens through
+          inference. Under the aggressive setting, it keeps only 14.91% of final audio tokens and
+          cuts prefilling FLOPs by 27.48%, yet maintains near-baseline ASR and speech translation
+          quality while slightly improving average QA accuracy.
+        </p>
+        <p>
+          The deployment results point in the same direction: Affinity Pooling reduces the resources
+          needed for prompt processing, especially on longer utterances. On 40-60 s audio, DAP
+          reaches a 1.71x dynamic-memory saving on an H200 GPU, without extra training or changes to
+          the underlying model.
+        </p>
+      </section>
+      </div>
+
+      <section id="bibtex" class="panel citation-panel">
+        <p class="eyebrow">Citation</p>
+        <h2>BibTeX</h2>
+        <pre><code>@inproceedings{xiang2026distinct,
+  title = {Do We Need Distinct Representations for Every Speech Token? Unveiling and Exploiting Redundancy in Large Speech Language Models},
+  author = {Xiang, Bajian and Guo, Tingwei and Chen, Xuan and Han, Yang},
+  booktitle = {Findings of the Association for Computational Linguistics: ACL 2026},
+  year = {2026}
+}</code></pre>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Paper accepted to Findings of ACL 2026. Contact: xiangbj17@tsinghua.org.cn.
+      </p>
+    </footer>
+  </body>
+</html>
