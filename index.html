@@ -211,6 +211,10 @@
         font-size: 30px;
       }
 
+      .panel > h2 {
+        margin-bottom: 18px;
+      }
+
       h3 {
         margin: 0 0 10px;
         font-size: 20px;
@@ -652,7 +656,7 @@
           <p>
             Affinity Pooling aggregates audio tokens using cosine similarity. A token joins the
             active group if it matches any of the preceding lookback-window tokens above threshold
-            tau; otherwise, the current group is mean-pooled and a new group begins.
+            τ; otherwise, the current group is mean-pooled and a new group begins.
           </p>
           <p>
             The layer-wise Affinity Pooling probe confirms the same redundancy structure: input and
@@ -683,8 +687,8 @@
             </article>
             <article class="step">
               <span class="step-num">3</span>
-              <h3>Place by layer</h3>
-              <p>Compress at robust input and deep layers, while avoiding fragile middle layers.</p>
+              <h3>Probe layer by layer</h3>
+              <p>Apply Affinity Pooling to one layer at a time to measure where representations are compressible and where they are fragile.</p>
             </article>
           </div>
         </div>
@@ -719,7 +723,7 @@
             <span>Final audio token retention ratio under the aggressive DAP setting.</span>
           </div>
           <div class="metric">
-            <strong>1.71x</strong>
+            <strong>1.70x</strong>
             <span>Dynamic memory saving on 40-60 s utterances in H200 deployment.</span>
           </div>
           <div class="metric">
@@ -737,7 +741,7 @@
         <p>
           The deployment results point in the same direction: Affinity Pooling reduces the resources
           needed for prompt processing, especially on longer utterances. On 40-60 s audio, DAP
-          reaches a 1.71x dynamic-memory saving on an H200 GPU, without extra training or changes to
+          reaches a 1.70x dynamic-memory saving on an H200 GPU, without extra training or changes to
           the underlying model.
         </p>
       </section>
